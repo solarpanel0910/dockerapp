@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>投票結果</title>
+    <!-- Chart.js ライブラリを読み込み -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        padding: 20px;
+        background-color: #fff;
+      }
+      .chart-container {
+        position: relative;
+        height: 60vh;
+        width: 90vw;
+        margin: 0 auto;
+      }
+      .nav-link {
+        margin-bottom: 20px;
+        font-size: 1.2em;
+        display: inline-block;
+        text-decoration: none;
+        color: #007bff;
+        border: 1px solid #007bff;
+        padding: 8px 16px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="text-align: left">
+      <a href="/" class="nav-link">👈 投票画面に戻る</a>
+    </div>
+
+    <h1>リアルタイム投票結果</h1>
+
+    <div class="chart-container">
+      <canvas id="voteChart"></canvas>
+    </div>
+
+    <script>
+      let myChart = null;
+
+      async function updateChart() {
+        // データを取得
+        const response = await fetch("/api/votes");
+        const data = await response.json();
+
+        // データをChart.js用に加工
+        const labels = data.map((item) => item.name);
+        const counts = data.map((item) => item.count);
+
+        const ctx = document.getElementById("voteChart").getContext("2d");
+
+        // 初回描画
+        if (myChart === null) {
+          myChart = new Chart(ctx, {
+            type: "bar", // 縦棒グラフ
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: "得票数",
+                  data: counts,
+                  backgroundColor: "rgba(54, 162, 235, 0.6)",
+                  borderColor: "rgba(54, 162, 235, 1)",
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+              },
+            },
+          });
+        } else {
+          // 2回目以降はデータを更新してアニメーション
+          myChart.data.labels = labels;
+          myChart.data.datasets[0].data = counts;
+          myChart.update();
+        }
+      }
+
+      // 初回実行と自動更新
+      updateChart();
+      setInterval(updateChart, 3000);
+    </script>
+  </body>
+</html>

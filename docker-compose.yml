@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  # ① データベース (手元の init.sql を使う)
+  db:
+    image: mysql:8.0
+    container_name: vote_db
+    # 文字化け対策のコマンド
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: votedb
+    volumes:
+      # 手元の init.sql を読み込む
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/mysql
+    networks:
+      - vote-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ② アプリケーション (手元の ./app をビルドする)
+  app:
+    build: ./app # ← ここを build に戻しました
+    container_name: vote_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: "db"
+      DB_USER: "root"
+      DB_PASSWORD: "rootpass"
+      DB_NAME: "votedb"
+    networks:
+      - vote-net
+
+  # ③ Webサーバー (手元の ./html を使う)
+  web:
+    image: nginx:alpine
+    container_name: vote_web
+    ports:
+      - "8888:80"
+    volumes:
+      # 手元の設定とHTMLファイルを読み込む
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./html:/usr/share/nginx/html:ro
+    networks:
+      - vote-net
+    depends_on:
+      - app
+
+networks:
+  vote-net:
+    driver: bridge
+
+volumes:
+  db_data:

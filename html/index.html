@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>メニュー投票</title>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        background-color: #f4f4f4;
+        text-align: center;
+        padding: 20px;
+        color: #333;
+      }
+
+      /* リンクのスタイル */
+      .nav-link {
+        margin-bottom: 30px;
+        display: inline-block;
+        font-size: 1.1em;
+        text-decoration: none;
+        color: #007bff;
+        border: 1px solid #007bff;
+        padding: 10px 20px;
+        border-radius: 30px;
+        background: white;
+        transition: all 0.3s;
+      }
+      .nav-link:hover {
+        background: #007bff;
+        color: white;
+      }
+
+      /* グリッドレイアウトの調整 */
+      #menu-container {
+        display: grid;
+        /* 幅に合わせて自動詰め込み。最小幅を少し広げて改行しにくくする */
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      /* カードのスタイル（高さ揃えの肝） */
+      .menu-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        border: 2px solid transparent;
+
+        /* Flexboxで中身を縦に並べる */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between; /* 上下に分散 */
+        height: 100%; /* グリッドセルの高さいっぱいに広げる */
+        box-sizing: border-box;
+      }
+
+      .menu-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        border-color: #007bff;
+      }
+
+      .menu-card:active {
+        transform: scale(0.98);
+        background-color: #f0f8ff;
+      }
+
+      /* メニュー名 */
+      .menu-name {
+        font-weight: bold;
+        font-size: 1.1em;
+        margin-bottom: 15px;
+        color: #444;
+        /* 名前が短くても長くても、ボタンの位置を合わせるために余白調整 */
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* ボタン */
+      .vote-btn {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 0;
+        border-radius: 6px;
+        width: 100%;
+        font-weight: bold;
+        font-size: 0.95em;
+      }
+
+      /* -----------------------
+           トースト通知（自動で消えるポップアップ）
+           ----------------------- */
+      #toast {
+        visibility: hidden;
+        min-width: 300px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 50px;
+        padding: 16px;
+        position: fixed;
+        z-index: 100;
+        left: 50%;
+        bottom: 30px;
+        transform: translateX(-50%); /* 左右中央寄せ */
+        font-size: 16px;
+        opacity: 0;
+        transition: opacity 0.3s, bottom 0.3s;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      #toast.show {
+        visibility: visible;
+        opacity: 1;
+        bottom: 50px; /* ふわっと浮き上がる演出 */
+      }
+    </style>
+  </head>
+  <body>
+    <a href="/result.html" class="nav-link">📊 投票結果(グラフ)を見る</a>
+
+    <h1 style="margin-bottom: 10px">今日のランチ、何にする？</h1>
+    <p style="color: #666; margin-bottom: 30px">
+      食べたいメニューをクリックして投票してください
+    </p>
+
+    <div id="menu-container"></div>
+
+    <!-- トースト通知用の箱（最初は見えない） -->
+    <div id="toast">投票しました！</div>
+
+    <script>
+      async function loadMenu() {
+        const response = await fetch("/api/votes");
+        const data = await response.json();
+        const container = document.getElementById("menu-container");
+        container.innerHTML = "";
+
+        data.forEach((item) => {
+          const card = document.createElement("div");
+          card.className = "menu-card";
+          // カード全体クリックで投票
+          card.onclick = () => vote(item.id, item.name);
+
+          card.innerHTML = `
+                    <div class="menu-name">${item.name}</div>
+                    <button class="vote-btn">投票する</button>
+                `;
+          container.appendChild(card);
+        });
+      }
+
+      let toastTimeout;
+      async function vote(menuId, menuName) {
+        // サーバーに送信
+        await fetch(`/api/vote/${menuId}`, { method: "POST" });
+
+        // トースト通知を表示
+        showToast(`「${menuName}」に投票しました！🎉`);
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.innerText = message;
+        toast.className = "show";
+
+        // 連続で押されたときのためにタイマーをリセット
+        if (toastTimeout) clearTimeout(toastTimeout);
+
+        // 2.5秒後に消す
+        toastTimeout = setTimeout(() => {
+          toast.className = toast.className.replace("show", "");
+        }, 2500);
+      }
+
+      loadMenu();
+    </script>
+  </body>
+</html>
