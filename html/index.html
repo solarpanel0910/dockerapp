@@ -1,187 +1,87 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>メニュー投票</title>
-    <style>
-      body {
-        font-family: "Helvetica Neue", Arial, sans-serif;
-        background-color: #f4f4f4;
-        text-align: center;
-        padding: 20px;
-        color: #333;
+
+<head>
+  <meta charset="UTF-8" />
+  <title>メニュー投票</title>
+  <style>
+    /* 全体の見た目を整えます */
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+
+    /* メニューを表示するカードの見た目です */
+    .menu-card {
+      border: 1px solid #ccc;
+      margin: 10px;
+      padding: 10px;
+      display: inline-block;
+      width: 200px;
+    }
+
+    /* ボタンにマウスを乗せた時に分かりやすくします */
+    button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 結果画面へ行くためのリンクです -->
+  <a href="/result.html">📊 投票結果を見る</a>
+  <!-- タイトルです -->
+  <h1>今日のランチ、何にする？</h1>
+
+  <!-- ここにメニューが追加されます -->
+  <div id="menu-container"></div>
+
+  <script>
+    // 画面にメニューを表示するための「関数（命令のセット）」です
+    async function loadMenu() {
+      // サーバーから「投票データ」を受け取ります
+      const response = await fetch("/api/votes");
+      // 受け取ったデータを、プログラムで使いやすい形（配列）にします
+      const menu_data_list = await response.json();
+
+      // メニューを表示する場所（container）を探します
+      const container = document.getElementById("menu-container");
+
+      // 最初は中身を空っぽにします
+      container.innerHTML = "";
+
+      // メニューの数だけ、1つずつ処理を繰り返します（標準的なforループ）
+      for (let i = 0; i < menu_data_list.length; i = i + 1) {
+        // 現在のメニューのデータを取り出します
+        const item = menu_data_list[i];
+
+        // 新しく「div」という箱（カード）を作ります
+        const card = document.createElement("div");
+        // 作った箱に「menu-card」という名前（クラス）を付けます
+        card.className = "menu-card";
+
+        // 箱の中身（メニュー名とボタン）を作ります
+        // item.name がメニューの名前、item.id がメニューの番号です
+        card.innerHTML = "<p>" + item.name + "</p>" +
+          "<button onclick='vote(" + item.id + ")'>投票する</button>";
+
+        // 最後に、メニューを表示する場所（container）にこの箱を追加します
+        container.appendChild(card);
       }
+    }
 
-      /* リンクのスタイル */
-      .nav-link {
-        margin-bottom: 30px;
-        display: inline-block;
-        font-size: 1.1em;
-        text-decoration: none;
-        color: #007bff;
-        border: 1px solid #007bff;
-        padding: 10px 20px;
-        border-radius: 30px;
-        background: white;
-        transition: all 0.3s;
-      }
-      .nav-link:hover {
-        background: #007bff;
-        color: white;
-      }
+    // ボタンが押された時に「投票する」ための関数です
+    async function vote(selected_menu_id) {
+      // サーバーに「この番号のメニューに投票しました」と伝えます
+      await fetch("/api/vote/" + selected_menu_id, { method: "POST" });
 
-      /* グリッドレイアウトの調整 */
-      #menu-container {
-        display: grid;
-        /* 幅に合わせて自動詰め込み。最小幅を少し広げて改行しにくくする */
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 20px;
-        max-width: 1200px;
-        margin: 0 auto;
-      }
+      // 投票完了のメッセージを画面に出します
+      alert("投票しました！");
+    }
 
-      /* カードのスタイル（高さ揃えの肝） */
-      .menu-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        border: 2px solid transparent;
+    // ページを読み込んだ時に、まずメニューを表示する関数を実行します
+    loadMenu();
+  </script>
+</body>
 
-        /* Flexboxで中身を縦に並べる */
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between; /* 上下に分散 */
-        height: 100%; /* グリッドセルの高さいっぱいに広げる */
-        box-sizing: border-box;
-      }
-
-      .menu-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-        border-color: #007bff;
-      }
-
-      .menu-card:active {
-        transform: scale(0.98);
-        background-color: #f0f8ff;
-      }
-
-      /* メニュー名 */
-      .menu-name {
-        font-weight: bold;
-        font-size: 1.1em;
-        margin-bottom: 15px;
-        color: #444;
-        /* 名前が短くても長くても、ボタンの位置を合わせるために余白調整 */
-        flex-grow: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      /* ボタン */
-      .vote-btn {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 10px 0;
-        border-radius: 6px;
-        width: 100%;
-        font-weight: bold;
-        font-size: 0.95em;
-      }
-
-      /* -----------------------
-           トースト通知（自動で消えるポップアップ）
-           ----------------------- */
-      #toast {
-        visibility: hidden;
-        min-width: 300px;
-        background-color: #333;
-        color: #fff;
-        text-align: center;
-        border-radius: 50px;
-        padding: 16px;
-        position: fixed;
-        z-index: 100;
-        left: 50%;
-        bottom: 30px;
-        transform: translateX(-50%); /* 左右中央寄せ */
-        font-size: 16px;
-        opacity: 0;
-        transition: opacity 0.3s, bottom 0.3s;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-      }
-
-      #toast.show {
-        visibility: visible;
-        opacity: 1;
-        bottom: 50px; /* ふわっと浮き上がる演出 */
-      }
-    </style>
-  </head>
-  <body>
-    <a href="/result.html" class="nav-link">📊 投票結果(グラフ)を見る</a>
-
-    <h1 style="margin-bottom: 10px">今日のランチ、何にする？</h1>
-    <p style="color: #666; margin-bottom: 30px">
-      食べたいメニューをクリックして投票してください
-    </p>
-
-    <div id="menu-container"></div>
-
-    <!-- トースト通知用の箱（最初は見えない） -->
-    <div id="toast">投票しました！</div>
-
-    <script>
-      async function loadMenu() {
-        const response = await fetch("/api/votes");
-        const data = await response.json();
-        const container = document.getElementById("menu-container");
-        container.innerHTML = "";
-
-        data.forEach((item) => {
-          const card = document.createElement("div");
-          card.className = "menu-card";
-          // カード全体クリックで投票
-          card.onclick = () => vote(item.id, item.name);
-
-          card.innerHTML = `
-                    <div class="menu-name">${item.name}</div>
-                    <button class="vote-btn">投票する</button>
-                `;
-          container.appendChild(card);
-        });
-      }
-
-      let toastTimeout;
-      async function vote(menuId, menuName) {
-        // サーバーに送信
-        await fetch(`/api/vote/${menuId}`, { method: "POST" });
-
-        // トースト通知を表示
-        showToast(`「${menuName}」に投票しました！🎉`);
-      }
-
-      function showToast(message) {
-        const toast = document.getElementById("toast");
-        toast.innerText = message;
-        toast.className = "show";
-
-        // 連続で押されたときのためにタイマーをリセット
-        if (toastTimeout) clearTimeout(toastTimeout);
-
-        // 2.5秒後に消す
-        toastTimeout = setTimeout(() => {
-          toast.className = toast.className.replace("show", "");
-        }, 2500);
-      }
-
-      loadMenu();
-    </script>
-  </body>
 </html>
