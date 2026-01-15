@@ -1,34 +1,33 @@
+# Docker Compose（ドッカーコンポーズ）という、複数のプログラムをまとめて動かすための指示書です
 version: "3.8"
 
 services:
-  # ① データベース (手元の init.sql を使う)
+  # ① データベース（MySQL）の設定です
   db:
+    # MySQLの公式イメージを使います
     image: mysql:8.0
-    container_name: vote_db
-    # 文字化け対策のコマンド
+    # 日本語を正しく扱うための特別な設定を付け加えます
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    # 接続に必要な「秘密の合言葉」や「名前」を決めます
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: votedb
+      MYSQL_ROOT_PASSWORD: rootpass # 管理者のパスワード
+      MYSQL_DATABASE: votedb        # データベースの名前
     volumes:
-      # 手元の init.sql を読み込む
+      # 手元にある「init.sql（初期化命令）」をデータベースに読み込ませます
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # データを保存するための場所を確保します
       - db_data:/var/lib/mysql
     networks:
       - vote-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # ② アプリケーション (手元の ./app をビルドする)
+  # ② Pythonプログラム（app）の設定です
   app:
-    build: ./app # ← ここを build に戻しました
-    container_name: vote_app
+    # 手元にある「app」フォルダの中身を使って、プログラムを組み立てます
+    build: ./app
+    # データベースが準備できるまで待ちます
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+    # データベースに接続するために必要な情報を伝えます
     environment:
       DB_HOST: "db"
       DB_USER: "root"
@@ -37,24 +36,28 @@ services:
     networks:
       - vote-net
 
-  # ③ Webサーバー (手元の ./html を使う)
+  # ③ ウェブサーバー（Nginx / web）の設定です
   web:
+    # Nginx（エンジンエックス）という軽量なウェブサーバーを使います
     image: nginx:alpine
-    container_name: vote_web
+    # パソコンの「8888番」から、ウェブサーバーの「80番」へ繋ぎます
     ports:
       - "8888:80"
     volumes:
-      # 手元の設定とHTMLファイルを読み込む
+      # 設定ファイルとHTMLファイルを読み込ませます
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./html:/usr/share/nginx/html:ro
     networks:
       - vote-net
+    # Pythonプログラムが動いてから、このサーバーを動かします
     depends_on:
       - app
 
+# 通信の通り道（ネットワーク）の名前を決めます
 networks:
   vote-net:
     driver: bridge
 
+# データを保存する場所（ボリューム）の名前を決めます
 volumes:
   db_data:
